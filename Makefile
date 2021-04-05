@@ -114,6 +114,7 @@ run:
 	--build-arg CONFIG_RUN="$$CONFIG_RUN"
 	docker run --rm -it \
 	--network=host \
+	-v $(PWD):/s \
 	temp \
 	sh -c "/out"
 

@@ -79,6 +79,14 @@ rtmpDisable: no
 rtmpPort: 1935
 
 ###############################################
+# HLS options
+
+# disable support for the HLS protocol.
+hlsDisable: no
+# port of the HLS listener.
+hlsPort: 8888
+
+###############################################
 # Path options
 
 # these settings are path-dependent.

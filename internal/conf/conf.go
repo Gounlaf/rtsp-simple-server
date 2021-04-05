@@ -84,6 +84,10 @@ type Conf struct {
 	RTMPDisable bool `yaml:"rtmpDisable"`
 	RTMPPort    int  `yaml:"rtmpPort"`
 
+	// hls
+	HLSDisable bool `yaml:"hlsDisable"`
+	HLSPort    int  `yaml:"hlsPort`
+
 	// path
 	Paths map[string]*PathConf `yaml:"paths"`
 }
@@ -232,6 +236,10 @@ func (conf *Conf) fillAndCheck() error {
 
 	if conf.RTMPPort == 0 {
 		conf.RTMPPort = 1935
+	}
+
+	if conf.HLSPort == 0 {
+		conf.HLSPort = 8888
 	}
 
 	if len(conf.Paths) == 0 {

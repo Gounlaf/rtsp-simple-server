@@ -334,11 +334,21 @@ func (c *Client) runRead() {
 						}
 						videoLastDTS = dts
 
-						c.conn.NetConn().SetWriteDeadline(time.Now().Add(c.writeTimeout))
-						err := c.conn.WriteH264(videoBuf, dts)
+						data, err := h264.EncodeAVCC(videoBuf)
 						if err != nil {
 							return err
 						}
+
+						c.conn.NetConn().SetWriteDeadline(time.Now().Add(c.writeTimeout))
+						err = c.conn.WritePacket(av.Packet{
+							Type: av.H264,
+							Data: data,
+							Time: dts,
+						})
+						if err != nil {
+							return err
+						}
+
 						videoBuf = nil
 					}
 
@@ -352,8 +362,14 @@ func (c *Client) runRead() {
 					}
 
 					for i, au := range aus {
+						auPTS := pts + time.Duration(i)*1000*time.Second/time.Duration(audioClockRate)
+
 						c.conn.NetConn().SetWriteDeadline(time.Now().Add(c.writeTimeout))
-						err := c.conn.WriteAAC(au, pts+time.Duration(i)*1000*time.Second/time.Duration(audioClockRate))
+						err := c.conn.WritePacket(av.Packet{
+							Type: av.AAC,
+							Data: au,
+							Time: auPTS,
+						})
 						if err != nil {
 							return err
 						}

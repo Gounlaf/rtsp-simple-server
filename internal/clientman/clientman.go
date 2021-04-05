@@ -8,10 +8,12 @@ import (
 	"github.com/aler9/gortsplib/pkg/base"
 
 	"github.com/aler9/rtsp-simple-server/internal/client"
+	"github.com/aler9/rtsp-simple-server/internal/clienthls"
 	"github.com/aler9/rtsp-simple-server/internal/clientrtmp"
 	"github.com/aler9/rtsp-simple-server/internal/clientrtsp"
 	"github.com/aler9/rtsp-simple-server/internal/logger"
 	"github.com/aler9/rtsp-simple-server/internal/rtmp"
+	"github.com/aler9/rtsp-simple-server/internal/serverhls"
 	"github.com/aler9/rtsp-simple-server/internal/serverrtmp"
 	"github.com/aler9/rtsp-simple-server/internal/serverrtsp"
 	"github.com/aler9/rtsp-simple-server/internal/stats"
@@ -44,10 +46,12 @@ type ClientManager struct {
 	serverPlain         *serverrtsp.Server
 	serverTLS           *serverrtsp.Server
 	serverRTMP          *serverrtmp.Server
+	serverHLS           *serverhls.Server
 	parent              Parent
 
-	clients map[client.Client]struct{}
-	wg      sync.WaitGroup
+	clients          map[client.Client]struct{}
+	clientsByHLSPath map[string]client.Client
+	wg               sync.WaitGroup
 
 	// in
 	clientClose chan client.Client
@@ -71,6 +75,7 @@ func New(
 	serverPlain *serverrtsp.Server,
 	serverTLS *serverrtsp.Server,
 	serverRTMP *serverrtmp.Server,
+	serverHLS *serverhls.Server,
 	parent Parent) *ClientManager {
 
 	cm := &ClientManager{
@@ -86,8 +91,10 @@ func New(
 		serverPlain:         serverPlain,
 		serverTLS:           serverTLS,
 		serverRTMP:          serverRTMP,
+		serverHLS:           serverHLS,
 		parent:              parent,
 		clients:             make(map[client.Client]struct{}),
+		clientsByHLSPath:    make(map[string]client.Client),
 		clientClose:         make(chan client.Client),
 		terminate:           make(chan struct{}),
 		done:                make(chan struct{}),
@@ -131,6 +138,13 @@ func (cm *ClientManager) run() {
 			return cm.serverRTMP.Accept()
 		}
 		return make(chan *rtmp.Conn)
+	}()
+
+	hlsRequest := func() chan string {
+		if cm.serverHLS != nil {
+			return cm.serverHLS.Request()
+		}
+		return make(chan string)
 	}()
 
 outer:
@@ -181,19 +195,32 @@ outer:
 				cm)
 			cm.clients[c] = struct{}{}
 
+		case path := <-hlsRequest:
+			if _, ok := cm.clientsByHLSPath[path]; ok {
+				continue
+			}
+
+			c := clienthls.New(
+				cm.readBufferCount,
+				&cm.wg,
+				cm.stats,
+				path,
+				cm.pathMan,
+				cm)
+			cm.clients[c] = struct{}{}
+			cm.clientsByHLSPath[path] = c
+
 		case c := <-cm.pathMan.ClientClose():
 			if _, ok := cm.clients[c]; !ok {
 				continue
 			}
-			delete(cm.clients, c)
-			c.Close()
+			cm.onClientClose(c)
 
 		case c := <-cm.clientClose:
 			if _, ok := cm.clients[c]; !ok {
 				continue
 			}
-			delete(cm.clients, c)
-			c.Close()
+			cm.onClientClose(c)
 
 		case <-cm.terminate:
 			break outer
@@ -220,6 +247,14 @@ outer:
 	cm.wg.Wait()
 
 	close(cm.clientClose)
+}
+
+func (cm *ClientManager) onClientClose(c client.Client) {
+	delete(cm.clients, c)
+	if hc, ok := c.(*clienthls.Client); ok {
+		delete(cm.clientsByHLSPath, hc.PathName())
+	}
+	c.Close()
 }
 
 // OnClientClose is called by a client.

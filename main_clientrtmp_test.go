@@ -16,7 +16,7 @@ func TestClientRTMPPublish(t *testing.T) {
 		"video",
 	} {
 		t.Run(source, func(t *testing.T) {
-			p, ok := testProgram("")
+			p, ok := testProgram("hlsDisable: yes\n")
 			require.Equal(t, true, ok)
 			defer p.close()
 
@@ -48,7 +48,7 @@ func TestClientRTMPPublish(t *testing.T) {
 }
 
 func TestClientRTMPRead(t *testing.T) {
-	p, ok := testProgram("")
+	p, ok := testProgram("hlsDisable: yes\n")
 	require.Equal(t, true, ok)
 	defer p.close()
 
@@ -79,6 +79,7 @@ func TestClientRTMPRead(t *testing.T) {
 func TestClientRTMPAuth(t *testing.T) {
 	t.Run("publish", func(t *testing.T) {
 		p, ok := testProgram("rtspDisable: yes\n" +
+			"hlsDisable: yes\n" +
 			"paths:\n" +
 			"  all:\n" +
 			"    publishUser: testuser\n" +
@@ -112,6 +113,7 @@ func TestClientRTMPAuth(t *testing.T) {
 
 	t.Run("read", func(t *testing.T) {
 		p, ok := testProgram("rtspDisable: yes\n" +
+			"hlsDisable: yes\n" +
 			"paths:\n" +
 			"  all:\n" +
 			"    readUser: testuser\n" +
@@ -147,6 +149,7 @@ func TestClientRTMPAuth(t *testing.T) {
 func TestClientRTMPAuthFail(t *testing.T) {
 	t.Run("publish", func(t *testing.T) {
 		p, ok := testProgram("rtspDisable: yes\n" +
+			"hlsDisable: yes\n" +
 			"paths:\n" +
 			"  all:\n" +
 			"    publishUser: testuser2\n" +
@@ -180,6 +183,7 @@ func TestClientRTMPAuthFail(t *testing.T) {
 
 	t.Run("read", func(t *testing.T) {
 		p, ok := testProgram("rtspDisable: yes\n" +
+			"hlsDisable: yes\n" +
 			"paths:\n" +
 			"  all:\n" +
 			"    readUser: testuser2\n" +
@@ -213,7 +217,7 @@ func TestClientRTMPAuthFail(t *testing.T) {
 }
 
 func TestClientRTMPRTPInfo(t *testing.T) {
-	p, ok := testProgram("")
+	p, ok := testProgram("hlsDisable: yes\n")
 	require.Equal(t, true, ok)
 	defer p.close()
 
